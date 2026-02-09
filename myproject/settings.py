@@ -28,8 +28,8 @@ SECRET_KEY = "django-insecure-e_)^e^k5e-4jru+sye+p!qe9jb_*h8m#3mxmx#tec(sa&*2wo3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-CSRF_TRUSTED_ORIGINS = ['https://*.pinggy.link']
-ALLOWED_HOSTS = ['.pinggy.link', 'localhost', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['zoom.onrender.com']
+ALLOWED_HOSTS = ['.onrender.com', 'onrender.com']
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
