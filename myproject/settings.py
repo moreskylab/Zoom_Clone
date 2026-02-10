@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure-e_)^e^k5e-4jru+sye+p!qe9jb_*h8m#3mxmx#tec(sa&*2wo3
 DEBUG = True
 
 CSRF_TRUSTED_ORIGINS = ['https://zoom.onrender.com','https://zoom.altgr.in']
-ALLOWED_HOSTS = ['.onrender.com', 'onrender.com', 'zoom.altgr.in' ,'*.altgr.in']
+ALLOWED_HOSTS = ['.onrender.com', 'onrender.com', 'zoom.altgr.in' ,'*.altgr.in'] + ['127.0.0.1']
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
@@ -52,20 +52,27 @@ INSTALLED_APPS = [
 ASGI_APPLICATION = 'myproject.asgi.application'
 
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
-            "expiry": 60,  # Expire channel messages after 60 seconds
-            "group_expiry": 86400,  # Expire groups after 24 hours (86400 seconds)
-            "capacity": 100,  # Maximum number of messages per channel
-            "channel_capacity": {
-                "http.request": 200,
-                "http.response!*": 10,
-            },
-        },
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
+
+
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             "hosts": [('127.0.0.1', 6379)],
+#             "expiry": 60,  # Expire channel messages after 60 seconds
+#             "group_expiry": 86400,  # Expire groups after 24 hours (86400 seconds)
+#             "capacity": 100,  # Maximum number of messages per channel
+#             "channel_capacity": {
+#                 "http.request": 200,
+#                 "http.response!*": 10,
+#             },
+#         },
+#     },
+# }
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
