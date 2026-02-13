@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room: {{ room_name }}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        /* Custom overrides for specific visual flair that Bootstrap utilities don't cover */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        /* Video Grid Layout - Keep custom for auto-fit capability */
+        #video-streams {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            align-content: start;
+        }
+        #video-streams::-webkit-scrollbar { width: 8px; }
+        #video-streams::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+        /* Video Card Styling */
+        .video-container {
+            aspect-ratio: 16/9;
+            transition: all 0.3s ease;
+            background: #000;
+        }
+        .video-container:hover {
+            border-color: #0d6efd !important; /* Bootstrap primary */
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .video-container.video-off {
+            background: linear-gradient(135deg, #212529 0%, #000000 100%);
+            border-color: rgba(220, 53, 69, 0.3) !important;
+        }
+        .video-player {
+            object-fit: cover;
+            transition: opacity 0.3s;
+        }
+
+        /* Glassmorphism Overlays */
+        .glass-overlay {
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Animations */
+        @keyframes pulseIcon {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+        }
+        .video-muted-animation {
+            animation: pulseIcon 2s infinite;
+        }
+
+        /* Custom Widths */
+        .w-350px { width: 350px; }
+        .w-300px { width: 300px; }
+
+        /* Control Button Ripples */
+        .control-btn {
+            width: 48px;
+            height: 48px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .control-btn:hover { transform: translateY(-2px); }
+        .control-btn.active { background-color: #6c757d !important; } /* BS Secondary */
+
+        /* Pulse Animations for Buttons */
+        .pulse-red { animation: pulseRed 2s infinite; }
+        .pulse-green { animation: pulseGreen 2s infinite; }
+
+        @keyframes pulseRed {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        }
+        @keyframes pulseGreen {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+        }
+
+        /* Floating Reactions */
+        .floating-reaction {
+            position: fixed;
+            font-size: 36px;
+            animation: floatUp 3s ease-out forwards;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-200px); }
+        }
+
+        /* Chat Bubbles */
+        .message-bubble { max-width: 85%; }
+
+        /* Custom Scrollbar for Chat */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #495057; border-radius: 3px; }
+
+        /* Hide Scrollbar helper */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-black text-white overflow-hidden">
+
+    <div class="d-flex vh-100">
+        <!-- Video Section -->
+        <div id="video-section" class="flex-fill d-flex flex-column position-relative bg-dark bg-gradient">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom border-secondary border-opacity-25 bg-dark bg-opacity-75 glass-overlay">
+                <h5 class="mb-0 text-white"><i class="bi bi-camera-video me-2"></i>{{ room_name }}</h5>
+                <div class="text-secondary small fw-bold">
+                    <i class="bi bi-people-fill text-primary me-1"></i>
+                    <span id="participant-count" class="text-white">0</span> Participants
+                </div>
+            </div>
+
+            <!-- Video Grid -->
+            <div id="video-streams" class="flex-fill p-4 gap-3 overflow-auto">
+                <!-- JS will inject video containers here -->
+            </div>
+
+            <!-- Control Bar -->
+            <div class="p-3 d-flex justify-content-between align-items-center bg-dark border-top border-secondary border-opacity-25">
+                <!-- Left controls -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="mic-btn" title="Mute/Unmute">
+                        <i class="bi bi-mic-fill fs-5"></i>
+                    </button>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="video-btn" title="Start/Stop Video">
+                        <i class="bi bi-camera-video-fill fs-5"></i>
+                    </button>
+                </div>
+
+                <!-- Center controls -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="participants-btn" title="Participants">
+                        <i class="bi bi-people-fill fs-5"></i>
+                    </button>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="chat-btn" title="Chat">
+                        <i class="bi bi-chat-dots-fill fs-5"></i>
+                    </button>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="share-btn" title="Share Screen">
+                        <i class="bi bi-display fs-5"></i>
+                    </button>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="reactions-btn" title="Reactions">
+                        <i class="bi bi-emoji-smile-fill fs-5"></i>
+                    </button>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="settings-btn" title="Settings" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                        <i class="bi bi-gear-fill fs-5"></i>
+                    </button>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="share-link-btn" title="Share Meeting Link">
+                        <i class="bi bi-share-fill fs-5"></i>
+                    </button>
+                </div>
+
+                <!-- Right control -->
+                <div>
+                    <button class="btn btn-danger control-btn rounded-pill px-4 w-auto fw-bold d-flex align-items-center gap-2" id="end-call-btn" title="Leave Meeting">
+                        <i class="bi bi-telephone-fill"></i> <span class="d-none d-md-inline">Leave</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Participants Panel -->
+        <aside class="d-none flex-column border-start border-secondary border-opacity-25 bg-dark position-absolute end-0 top-0 bottom-0 z-2 w-300px h-100 shadow-lg" id="participants-panel">
+            <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center bg-black bg-opacity-25">
+                <h6 class="mb-0"><i class="bi bi-people-fill me-2"></i>Participants (<span id="panel-participant-count">0</span>)</h6>
+                <button class="btn-close btn-close-white small" id="close-participants"></button>
+            </div>
+            <div class="flex-fill overflow-auto p-2 custom-scroll" id="participants-list">
+                <!-- Participants will be listed here -->
+            </div>
+        </aside>
+
+        <!-- Chat Sidebar -->
+        <aside id="chat-sidebar" class="d-flex flex-column border-start border-secondary border-opacity-25 bg-body-tertiary w-350px">
+            <div class="p-3 border-bottom border-secondary border-opacity-25 bg-dark bg-opacity-50">
+                <h6 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Chat</h6>
+            </div>
+            <div id="chat-logs" class="flex-fill overflow-auto p-3 custom-scroll d-flex flex-column gap-3 bg-dark">
+                <!-- Chat messages -->
+            </div>
+            <div class="p-3 border-top border-secondary border-opacity-25 bg-dark bg-opacity-50">
+                <div class="input-group">
+                    <input type="text" class="form-control bg-dark text-white border-secondary" id="chat-message-input"
+                           placeholder="Type a message..." aria-label="Chat message">
+                    <button class="btn btn-primary" type="button" id="chat-message-submit">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Reactions Popup -->
+    <div class="position-fixed start-50 translate-middle-x d-none gap-2 p-2 rounded-4 glass-overlay border border-secondary shadow-lg z-3" style="bottom: 90px;" id="reactions-popup">
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('👍')">👍</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('👏')">👏</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('❤️')">❤️</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('😂')">😂</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('😮')">😮</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('🎉')">🎉</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Settings</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Microphone</label>
+                        <select class="form-select bg-black text-white border-secondary" id="mic-select">
+                            <option>Default Microphone</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Camera</label>
+                        <select class="form-select bg-black text-white border-secondary" id="camera-select">
+                            <option>Default Camera</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Speaker</label>
+                        <select class="form-select bg-black text-white border-secondary" id="speaker-select">
+                            <option>Default Speaker</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Link Modal -->
+    <div class="modal fade" id="shareLinkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title"><i class="bi bi-share-fill me-2"></i>Share Meeting Link</h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="closeShareModal()" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-4">
+                    <div class="p-3 rounded-3 border border-primary bg-black bg-opacity-50 mb-3">
+                        <label class="form-label text-secondary small mb-1"><i class="bi bi-link-45deg"></i> Meeting Link</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control bg-dark text-white border-secondary" id="meetingShareLink" readonly onclick="this.select()">
+                            <button class="btn btn-primary share-copy-btn fw-bold" onclick="copyMeetingLink()">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-secondary small mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Share this link with others to invite them to the meeting
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Agora SDK -->
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.1.js"></script>
+
+    <script>
+        const APP_ID = "{{ app_id }}";
+        const TOKEN = null;
+        const CHANNEL = "{{ room_name }}";
+        const UID = Math.floor(Math.random() * 10000);
+        const USERNAME = "{{ username }}";
+        const DISPLAY_NAME = "{{ display_name }}";
+        let currentDisplayName = DISPLAY_NAME;
+
+        // Browser detection
+        const isEdge = /Edg/.test(navigator.userAgent);
+        const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+        const codecPreference = isEdge ? 'h264' : 'vp8';
+
+        const client = AgoraRTC.createClient({ mode: 'rtc', codec: codecPreference });
+
+        let localTracks = [];
+        let remoteUsers = {};
+        let participantNames = {};
+        let participantUsernames = {};
+        let isMicMuted = false;
+        let isVideoOff = false;
+        let isScreenSharing = false;
+        let screenTrack = null;
+
+        function addRippleEffect(element) {
+            // Ripple logic is mostly CSS hover now, but keep for legacy actions if needed
+            if (navigator.vibrate) navigator.vibrate(50);
+        }
+
+        async function checkMediaPermissions() {
+            try {
+                const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+                const micPermissionStatus = await navigator.permissions.query({ name: 'microphone' });
+                if (permissionStatus.state === 'denied' || micPermissionStatus.state === 'denied') {
+                    showPermissionGuide();
+                    return false;
+                }
+                return true;
+            } catch (error) { return true; }
+        }
+
+        function showPermissionGuide() {
+            const guide = `
+                <div class="alert alert-danger m-4 border-2" role="alert">
+                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Permission Needed</h5>
+                    <p>Please click the camera/lock icon in your address bar and allow Camera and Microphone access.</p>
+                    <button onclick="location.reload()" class="btn btn-outline-danger">Reload Page</button>
+                </div>`;
+            document.getElementById('video-streams').innerHTML = guide;
+        }
+
+        function showToast(message, type = 'info', icon = 'bi-info-circle-fill') {
+            // Using standard DOM creation, styling with Bootstrap classes
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-success' : (type === 'error' ? 'bg-danger' : 'bg-primary');
+
+            toast.className = `position-fixed top-0 start-50 translate-middle-x mt-4 p-3 rounded-3 shadow text-white d-flex align-items-center gap-2 z-3 ${bgClass}`;
+            toast.style.animation = 'slideDown 0.3s forwards';
+            toast.innerHTML = `<i class="bi ${icon}"></i><span>${message}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function updateStatusBadges() {
+            document.querySelectorAll('.status-badge-container').forEach(b => b.remove());
+
+            const badges = [];
+            if (isMicMuted) badges.push({class: 'border-danger text-danger', icon: 'bi-mic-mute-fill', text: 'Muted'});
+            if (isVideoOff) badges.push({class: 'border-warning text-warning', icon: 'bi-camera-video-off-fill', text: 'Video Off'});
+            if (isScreenSharing) badges.push({class: 'border-success text-success', icon: 'bi-display', text: 'Sharing'});
+
+            badges.forEach((b, index) => {
+                const div = document.createElement('div');
+                div.className = `status-badge-container position-fixed start-0 ms-3 px-3 py-2 rounded-pill border glass-overlay d-flex align-items-center gap-2 small fw-bold z-2 ${b.class}`;
+                div.style.bottom = `${90 + (index * 50)}px`;
+                div.innerHTML = `<i class="bi ${b.icon}"></i> ${b.text}`;
+                document.body.appendChild(div);
+            });
+        }
+
+        let joinAndDisplayLocalStream = async () => {
+            try {
+                const hasPermission = await checkMediaPermissions();
+                if (!hasPermission && isEdge) return;
+
+                client.on('user-published', handleUserJoined);
+                client.on('user-unpublished', handleUserUnpublished);
+                client.on('user-left', handleUserLeft);
+
+                await client.join(APP_ID, CHANNEL, TOKEN, UID);
+
+                // Track creation logic (simplified for brevity)
+                if (isEdge) {
+                     // ... Edge specific logic from original file ...
+                     try { localTracks[0] = await AgoraRTC.createMicrophoneAudioTrack({ encoderConfig: "music_standard" }); }
+                     catch(e) { console.error(e); isMicMuted = true; }
+                     try { localTracks[1] = await AgoraRTC.createCameraVideoTrack({ encoderConfig: "480p_1", optimizationMode: "detail" }); }
+                     catch(e) { console.error(e); isVideoOff = true; }
+                } else {
+                    try {
+                        localTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
+                    } catch (error) {
+                        // ... Error handling from original file ...
+                        if (error.code === 'NOT_READABLE' || error.message.includes('video')) {
+                            localTracks[0] = await AgoraRTC.createMicrophoneAudioTrack();
+                            isVideoOff = true;
+                        } else {
+                            isVideoOff = true; isMicMuted = true;
+                        }
+                    }
+                }
+
+                // Inject Player with Bootstrap classes
+                let player = `<div class="video-container position-relative rounded-4 overflow-hidden shadow border border-2 border-transparent ${isVideoOff ? 'video-off' : ''}" id="user-container-${UID}">
+                                <div class="video-player w-100 h-100" id="user-${UID}"></div>
+
+                                <div class="video-muted-icon position-absolute top-50 start-50 translate-middle bg-danger bg-opacity-25 border border-danger border-3 rounded-circle p-3 video-muted-animation ${isVideoOff ? 'd-flex' : 'd-none'} align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                    <i class="bi bi-camera-video-off-fill text-danger fs-1"></i>
+                                </div>
+
+                                <div class="position-absolute top-0 end-0 m-3">
+                                    <span class="glass-overlay px-2 py-1 rounded-pill small d-flex align-items-center gap-1 ${isMicMuted ? 'text-danger' : 'text-success'}" id="audio-status-${UID}">
+                                        <i class="bi ${isMicMuted ? 'bi-mic-mute-fill' : 'bi-mic-fill'}"></i>
+                                    </span>
+                                </div>
+
+                                <div class="position-absolute bottom-0 start-0 m-3 glass-overlay px-3 py-2 rounded-pill border border-white border-opacity-10 shadow-sm d-flex align-items-center gap-2">
+                                    <i class="bi bi-person-circle text-primary small"></i>
+                                    <span class="fw-bold small text-white" id="display-name-${UID}">${currentDisplayName}</span>
+                                    <span class="badge bg-primary ms-1" style="font-size: 10px;">You</span>
+                                </div>
+                              </div>`;
+
+                updateParticipantCount();
+                document.getElementById('video-streams').insertAdjacentHTML('beforeend', player);
+
+                if (localTracks[1]) localTracks[1].play(`user-${UID}`);
+                const tracksToPublish = localTracks.filter(track => track !== null);
+                if (tracksToPublish.length > 0) await client.publish(tracksToPublish);
+
+                // UI updates
+                if (isVideoOff) {
+                    const btn = document.getElementById('video-btn');
+                    btn.classList.replace('btn-secondary', 'btn-danger');
+                    btn.classList.add('pulse-red');
+                    btn.querySelector('i').className = 'bi bi-camera-video-off-fill fs-5';
+                }
+                if (isMicMuted) {
+                    const btn = document.getElementById('mic-btn');
+                    btn.classList.replace('btn-secondary', 'btn-danger');
+                    btn.classList.add('pulse-red');
+                    btn.querySelector('i').className = 'bi bi-mic-mute-fill fs-5';
+                }
+                updateStatusBadges();
+
+            } catch (error) { console.error(error); showToast('Failed to join', 'error'); }
+
+            chatSocket.send(JSON.stringify({ 'type': 'video_joined', 'username': USERNAME, 'display_name': currentDisplayName, 'uid': UID }));
+        };
+
+        let handleUserJoined = async (user, mediaType) => {
+            remoteUsers[user.uid] = user;
+            await client.subscribe(user, mediaType);
+
+            let playerElement = document.getElementById(`user-container-${user.uid}`);
+            if (!playerElement) {
+                const displayName = participantNames[user.uid] || participantUsernames[user.uid] || 'Guest';
+                const player = `<div class="video-container position-relative rounded-4 overflow-hidden shadow border border-2 border-transparent video-off" id="user-container-${user.uid}">
+                            <div class="video-player w-100 h-100" id="user-${user.uid}"></div>
+
+                            <div class="video-muted-icon position-absolute top-50 start-50 translate-middle bg-danger bg-opacity-25 border border-danger border-3 rounded-circle p-3 video-muted-animation d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-camera-video-off-fill text-danger fs-1"></i>
+                            </div>
+
+                            <div class="position-absolute top-0 end-0 m-3">
+                                <span class="glass-overlay px-2 py-1 rounded-pill small d-flex align-items-center gap-1 text-success" id="audio-status-${user.uid}">
+                                    <i class="bi bi-mic-fill"></i>
+                                </span>
+                            </div>
+
+                            <div class="position-absolute bottom-0 start-0 m-3 glass-overlay px-3 py-2 rounded-pill border border-white border-opacity-10 shadow-sm d-flex align-items-center gap-2">
+                                <i class="bi bi-person-circle text-primary small"></i>
+                                <span class="fw-bold small text-white" id="display-name-${user.uid}">${displayName}</span>
+                            </div>
+                          </div>`;
+                document.getElementById('video-streams').insertAdjacentHTML('beforeend', player);
+                updateParticipantCount();
+            }
+
+            if (mediaType === 'video' && user.videoTrack) {
+                user.videoTrack.play(`user-${user.uid}`);
+                const container = document.getElementById(`user-container-${user.uid}`);
+                if (container) {
+                    container.classList.remove('video-off');
+                    container.querySelector('.video-muted-icon').classList.replace('d-flex', 'd-none');
+                }
+            }
+            if (mediaType === 'audio' && user.audioTrack) { user.audioTrack.play(); }
+        };
+
+        let handleUserUnpublished = (user, mediaType) => {
+            if (mediaType === 'video') {
+                const container = document.getElementById(`user-container-${user.uid}`);
+                if (container) {
+                    container.classList.add('video-off');
+                    container.querySelector('.video-muted-icon').classList.replace('d-none', 'd-flex');
+                }
+            }
+        };
+
+        let handleUserLeft = async (user) => {
+            delete remoteUsers[user.uid];
+            const el = document.getElementById(`user-container-${user.uid}`);
+            if(el) el.remove();
+            updateParticipantCount();
+        };
+
+        function updateParticipantCount() {
+            const count = Object.keys(remoteUsers).length + 1;
+            document.getElementById('participant-count').textContent = count;
+            document.getElementById('panel-participant-count').textContent = count;
+            updateParticipantsList();
+        }
+
+        function updateParticipantsList() {
+            const list = document.getElementById('participants-list');
+            list.innerHTML = '';
+
+            // Local User Item
+            list.innerHTML += `
+                <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-secondary bg-opacity-10 mb-2">
+                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold text-white" style="width: 36px; height: 36px;">${currentDisplayName.charAt(0).toUpperCase()}</div>
+                    <div class="flex-fill">
+                        <div class="fw-bold small text-white">
+                            <span id="my-display-name">${currentDisplayName}</span> (You)
+                            <i class="bi bi-pencil-square ms-2 text-secondary" style="cursor: pointer;" onclick="editDisplayName()" title="Edit name"></i>
+                        </div>
+                        <div class="text-secondary" style="font-size: 11px;">${USERNAME} • Host</div>
+                    </div>
+                    <i class="bi ${isMicMuted ? 'bi-mic-mute-fill text-danger' : 'bi-mic-fill text-success'}"></i>
+                </div>`;
+
+            // Remote Users
+            Object.keys(remoteUsers).forEach(uid => {
+                const displayName = participantNames[uid] || participantUsernames[uid] || 'Guest';
+                const username = participantUsernames[uid] || 'Unknown';
+                list.innerHTML += `
+                    <div class="d-flex align-items-center gap-3 p-2 rounded-3 bg-secondary bg-opacity-10 mb-2">
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center fw-bold text-white" style="width: 36px; height: 36px;">${displayName.charAt(0).toUpperCase()}</div>
+                        <div class="flex-fill">
+                            <div class="fw-bold small text-white">${displayName}</div>
+                            <div class="text-secondary" style="font-size: 11px;">${username}</div>
+                        </div>
+                        <i class="bi bi-mic-fill text-success"></i>
+                    </div>`;
+            });
+        }
+
+        // --- BUTTON CONTROLS (Updated with Bootstrap classes toggle) ---
+
+        document.getElementById('mic-btn').onclick = async function() {
+            if (!localTracks[0]) return showToast('Microphone not available', 'error');
+
+            isMicMuted = !isMicMuted;
+            await localTracks[0].setEnabled(!isMicMuted);
+
+            const icon = this.querySelector('i');
+            const audioStatus = document.getElementById(`audio-status-${UID}`);
+
+            if (isMicMuted) {
+                icon.className = 'bi bi-mic-mute-fill fs-5';
+                this.classList.replace('btn-secondary', 'btn-danger');
+                this.classList.add('pulse-red');
+                if(audioStatus) {
+                    audioStatus.className = 'glass-overlay px-2 py-1 rounded-pill small d-flex align-items-center gap-1 text-danger';
+                    audioStatus.querySelector('i').className = 'bi bi-mic-mute-fill';
+                }
+                showToast('Microphone muted', 'error', 'bi-mic-mute-fill');
+            } else {
+                icon.className = 'bi bi-mic-fill fs-5';
+                this.classList.replace('btn-danger', 'btn-secondary');
+                this.classList.remove('pulse-red');
+                if(audioStatus) {
+                    audioStatus.className = 'glass-overlay px-2 py-1 rounded-pill small d-flex align-items-center gap-1 text-success';
+                    audioStatus.querySelector('i').className = 'bi bi-mic-fill';
+                }
+                showToast('Microphone unmuted', 'success', 'bi-mic-fill');
+            }
+            updateParticipantsList();
+            updateStatusBadges();
+        };
+
+        document.getElementById('video-btn').onclick = async function() {
+            if (!localTracks[1]) return showToast('Camera not available', 'error');
+
+            isVideoOff = !isVideoOff;
+            await localTracks[1].setEnabled(!isVideoOff);
+
+            const icon = this.querySelector('i');
+            const videoContainer = document.getElementById(`user-container-${UID}`);
+            const mutedIcon = videoContainer.querySelector('.video-muted-icon');
+
+            if (isVideoOff) {
+                icon.className = 'bi bi-camera-video-off-fill fs-5';
+                this.classList.replace('btn-secondary', 'btn-danger');
+                this.classList.add('pulse-red');
+                videoContainer.classList.add('video-off');
+                mutedIcon.classList.replace('d-none', 'd-flex');
+                showToast('Camera turned off', 'error', 'bi-camera-video-off-fill');
+            } else {
+                icon.className = 'bi bi-camera-video-fill fs-5';
+                this.classList.replace('btn-danger', 'btn-secondary');
+                this.classList.remove('pulse-red');
+                videoContainer.classList.remove('video-off');
+                mutedIcon.classList.replace('d-flex', 'd-none');
+                showToast('Camera turned on', 'success', 'bi-camera-video-fill');
+            }
+            updateStatusBadges();
+        };
+
+        document.getElementById('share-btn').onclick = async function() {
+            if (!isScreenSharing) {
+                try {
+                    const screenConfig = isEdge ? { encoderConfig: "1080p_1", optimizationMode: "detail" } : {};
+                    screenTrack = await AgoraRTC.createScreenVideoTrack(screenConfig, "auto");
+                    await client.unpublish([localTracks[1]]);
+                    await client.publish([screenTrack]);
+                    screenTrack.play(`user-${UID}`);
+
+                    isScreenSharing = true;
+                    this.classList.replace('btn-secondary', 'btn-success');
+                    this.classList.add('pulse-green');
+                    this.querySelector('i').className = 'bi bi-stop-circle-fill fs-5';
+                    showToast('Screen sharing started', 'success', 'bi-display');
+                } catch (error) { console.error(error); showToast('Sharing failed', 'error'); }
+            } else {
+                await client.unpublish([screenTrack]);
+                screenTrack.close();
+                await client.publish([localTracks[1]]);
+                localTracks[1].play(`user-${UID}`);
+
+                isScreenSharing = false;
+                this.classList.replace('btn-success', 'btn-secondary');
+                this.classList.remove('pulse-green');
+                this.querySelector('i').className = 'bi bi-display fs-5';
+                showToast('Screen sharing stopped', 'info', 'bi-display');
+            }
+            updateStatusBadges();
+        };
+
+        // Layout Toggles
+        document.getElementById('participants-btn').onclick = function() {
+            const panel = document.getElementById('participants-panel');
+            panel.classList.toggle('d-none');
+            panel.classList.toggle('d-flex');
+            this.classList.toggle('active');
+        };
+
+        document.getElementById('close-participants').onclick = function() {
+            const panel = document.getElementById('participants-panel');
+            panel.classList.add('d-none');
+            panel.classList.remove('d-flex');
+            document.getElementById('participants-btn').classList.remove('active');
+        };
+
+        document.getElementById('chat-btn').onclick = function() {
+            const chat = document.getElementById('chat-sidebar');
+            // Toggle sidebar display
+            if (chat.classList.contains('d-flex')) {
+                chat.classList.replace('d-flex', 'd-none');
+                this.classList.remove('active');
+            } else {
+                chat.classList.replace('d-none', 'd-flex');
+                this.classList.add('active');
+            }
+        };
+
+        document.getElementById('reactions-btn').onclick = function() {
+            const popup = document.getElementById('reactions-popup');
+            // Toggle
+            if(popup.classList.contains('d-none')) {
+                popup.classList.replace('d-none', 'd-flex');
+            } else {
+                popup.classList.replace('d-flex', 'd-none');
+            }
+        };
+
+        function sendReaction(emoji) {
+            if (navigator.vibrate) navigator.vibrate(100);
+            document.getElementById('reactions-popup').classList.replace('d-flex', 'd-none');
+
+            const reaction = document.createElement('div');
+            reaction.className = 'floating-reaction';
+            reaction.textContent = emoji;
+            reaction.style.left = Math.random() * window.innerWidth + 'px';
+            reaction.style.bottom = '100px';
+            document.body.appendChild(reaction);
+            setTimeout(() => reaction.remove(), 3000);
+        }
+
+        document.getElementById('end-call-btn').onclick = function() {
+            if (confirm('Are you sure you want to leave the meeting?')) leaveAndRemoveLocalStream();
+        };
+
+        // --- Chat Logic ---
+        const chatSocket = new WebSocket('wss://' + window.location.host + '/ws/chat/' + CHANNEL + '/');
+
+        function formatTimestamp(dateString) {
+            const date = dateString ? new Date(dateString) : new Date();
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function createMessageBubble(username, message, timestamp, isOwn = false) {
+            const align = isOwn ? 'align-items-end' : 'align-items-start';
+            const bubbleColor = isOwn ? 'bg-primary text-white rounded-bottom-0 rounded-start-3 rounded-top-3' : 'bg-secondary bg-opacity-25 text-white rounded-bottom-0 rounded-end-3 rounded-top-3';
+
+            return `
+                <div class="d-flex flex-column ${align} w-100">
+                    ${!isOwn ? `<div class="small fw-bold text-secondary px-1 mb-1" style="font-size: 12px;">${username}</div>` : ''}
+                    <div class="message-bubble p-2 px-3 shadow-sm ${bubbleColor}" style="word-wrap: break-word;">${message}</div>
+                    <div class="text-secondary mt-1 px-1" style="font-size: 10px;">${formatTimestamp(timestamp)}</div>
+                </div>`;
+        }
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const chatLogs = document.querySelector('#chat-logs');
+
+            if (data.type === 'history') {
+                data.messages.forEach(msg => {
+                    const isOwn = msg.username === USERNAME;
+                    chatLogs.innerHTML += createMessageBubble(msg.username, msg.message, msg.created, isOwn);
+                });
+            } else if (data.type === 'chat') {
+                const isOwn = data.username === USERNAME;
+                chatLogs.innerHTML += createMessageBubble(data.username, data.message, null, isOwn);
+                chatLogs.scrollTop = chatLogs.scrollHeight;
+            } else if (data.type === 'video_participant') {
+                if (data.uid === UID) return;
+                participantNames[data.uid] = data.display_name || data.username;
+                participantUsernames[data.uid] = data.username;
+                const labelSpan = document.querySelector(`#display-name-${data.uid}`);
+                if (labelSpan) labelSpan.textContent = data.display_name || data.username;
+                updateParticipantsList();
+            }
+        };
+
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const input = document.querySelector('#chat-message-input');
+            const message = input.value.trim();
+            if (message) {
+                chatSocket.send(JSON.stringify({ 'type': 'chat', 'message': message, 'username': USERNAME }));
+                input.value = '';
+            }
+        };
+        document.querySelector('#chat-message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') document.querySelector('#chat-message-submit').click();
+        });
+
+        // Share Link
+        document.getElementById('share-link-btn').onclick = function() {
+            const modal = new bootstrap.Modal(document.getElementById('shareLinkModal'));
+            document.getElementById('meetingShareLink').value = window.location.href;
+            modal.show();
+        };
+
+        function closeShareModal() {
+            const el = document.getElementById('shareLinkModal');
+            const modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+
+        function copyMeetingLink() {
+            const input = document.getElementById('meetingShareLink');
+            const button = document.querySelector('.share-copy-btn');
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => {
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-check-circle-fill"></i> Copied!';
+                button.classList.replace('btn-primary', 'btn-success');
+                setTimeout(() => {
+                    button.innerHTML = originalHTML;
+                    button.classList.replace('btn-success', 'btn-primary');
+                }, 2000);
+            });
+        }
+
+        // Functions for editDisplayName and Leave... (kept mostly same logic)
+        function editDisplayName() {
+            const newName = prompt('Enter your display name:', currentDisplayName);
+            if (newName && newName.trim()) {
+                currentDisplayName = newName.trim();
+                document.getElementById('my-display-name').textContent = currentDisplayName;
+                document.querySelector(`#display-name-${UID}`).textContent = currentDisplayName;
+                chatSocket.send(JSON.stringify({'type': 'video_joined', 'username': USERNAME, 'uid': UID}));
+                updateParticipantsList();
+            }
+        }
+
+        let leaveAndRemoveLocalStream = async () => {
+            for(let track of localTracks) { if(track) { track.stop(); track.close(); } }
+            if (screenTrack) screenTrack.close();
+            await client.leave();
+            window.location.href = '/';
+        };
+
+        joinAndDisplayLocalStream();
+    </script>
+</body>
+</html>

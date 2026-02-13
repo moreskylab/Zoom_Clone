@@ -1,223 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Video Meeting</title>
+{% extends 'base.html' %}
+
+{% block title %}Register - Video Meeting{% endblock %}
+
+{% block body_class %}bg-gradient-auth d-flex align-items-center justify-content-center p-3{% endblock %}
+
+{% block content %}
+<div class="card w-100 border-0 shadow-lg rounded-4 overflow-hidden hover-lift" style="max-width: 500px;">
     
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Header -->
+    <div class="card-header border-0 text-center text-white p-5 bg-gradient-primary-custom">
+        <i class="bi bi-person-plus-fill display-3 mb-3 d-block"></i>
+        <h2 class="fs-3 fw-bold mb-0">Create Account</h2>
+        <p class="mb-0 mt-2 opacity-75 small">Join us and start connecting instantly</p>
+    </div>
     
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            padding: 20px;
-        }
-        .register-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 500px;
-            width: 100%;
-            overflow: hidden;
-        }
-        .register-header {
-            background: linear-gradient(135deg, #0b93f6 0%, #0575e6 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-        }
-        .register-header i {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-        .register-header h2 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 600;
-        }
-        .register-header p {
-            margin: 10px 0 0;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        .register-body {
-            padding: 40px 30px;
-        }
-        .form-label {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 8px;
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 20px;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-        .form-control:focus {
-            border-color: #0b93f6;
-            box-shadow: 0 0 0 0.2rem rgba(11, 147, 246, 0.25);
-        }
-        .btn-register {
-            background: linear-gradient(135deg, #0b93f6 0%, #0575e6 100%);
-            border: none;
-            color: white;
-            padding: 14px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .btn-register:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(11, 147, 246, 0.4);
-            color: white;
-        }
-        .login-link {
-            text-align: center;
-            margin-top: 25px;
-            padding-top: 25px;
-            border-top: 2px solid #e9ecef;
-        }
-        .login-link a {
-            color: #0b93f6;
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-        .errorlist {
-            list-style: none;
-            padding: 0;
-            margin: 10px 0;
-        }
-        .errorlist li {
-            background: #fee;
-            color: #c33;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        .helptext {
-            font-size: 13px;
-            color: #6c757d;
-            margin-top: 5px;
-            display: block;
-        }
-        ul.helptext {
-            list-style: none;
-            padding-left: 0;
-        }
-        ul.helptext li {
-            padding: 3px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="register-container">
-        <div class="register-header">
-            <i class="bi bi-person-plus-fill"></i>
-            <h2>Create Account</h2>
-            <p>Join us and start connecting instantly</p>
-        </div>
-        
-        <div class="register-body">
-            <form method="post">
-                {% csrf_token %}
-                
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger" role="alert">
-                        {% for error in form.non_field_errors %}
-                            {{ error }}
-                        {% endfor %}
+    <!-- Body -->
+    <div class="card-body p-4 p-md-5">
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger rounded-3" role="alert">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="mb-3">
+                <label for="{{ form.username.id_for_label }}" class="form-label fw-bold text-secondary">
+                    <i class="bi bi-person-fill me-1"></i> Username
+                </label>
+                <input type="text" 
+                       class="form-control form-control-lg rounded-3 border-2 {% if form.username.errors %}is-invalid{% endif %}" 
+                       id="{{ form.username.id_for_label }}" 
+                       name="{{ form.username.name }}" 
+                       placeholder="Choose a unique username"
+                       value="{{ form.username.value|default:'' }}"
+                       required>
+                {% if form.username.help_text %}
+                    <div class="form-text text-muted small">{{ form.username.help_text }}</div>
+                {% endif %}
+                {% if form.username.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.username.errors %}{{ error }}{% endfor %}
                     </div>
                 {% endif %}
-                
-                <div class="mb-3">
-                    <label for="{{ form.username.id_for_label }}" class="form-label">
-                        <i class="bi bi-person-fill"></i> Username
-                    </label>
-                    <input type="text" 
-                           class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
-                           id="{{ form.username.id_for_label }}" 
-                           name="{{ form.username.name }}" 
-                           placeholder="Choose a unique username"
-                           value="{{ form.username.value|default:'' }}"
-                           required>
-                    {% if form.username.help_text %}
-                        <small class="helptext">{{ form.username.help_text }}</small>
-                    {% endif %}
-                    {% if form.username.errors %}
-                        <div class="invalid-feedback">
-                            {% for error in form.username.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <div class="mb-3">
-                    <label for="{{ form.password1.id_for_label }}" class="form-label">
-                        <i class="bi bi-lock-fill"></i> Password
-                    </label>
-                    <input type="password" 
-                           class="form-control {% if form.password1.errors %}is-invalid{% endif %}" 
-                           id="{{ form.password1.id_for_label }}" 
-                           name="{{ form.password1.name }}" 
-                           placeholder="Create a strong password"
-                           required>
-                    {% if form.password1.help_text %}
-                        <small class="helptext">{{ form.password1.help_text|safe }}</small>
-                    {% endif %}
-                    {% if form.password1.errors %}
-                        <div class="invalid-feedback">
-                            {% for error in form.password1.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <div class="mb-3">
-                    <label for="{{ form.password2.id_for_label }}" class="form-label">
-                        <i class="bi bi-lock-fill"></i> Confirm Password
-                    </label>
-                    <input type="password" 
-                           class="form-control {% if form.password2.errors %}is-invalid{% endif %}" 
-                           id="{{ form.password2.id_for_label }}" 
-                           name="{{ form.password2.name }}" 
-                           placeholder="Re-enter your password"
-                           required>
-                    {% if form.password2.help_text %}
-                        <small class="helptext">{{ form.password2.help_text }}</small>
-                    {% endif %}
-                    {% if form.password2.errors %}
-                        <div class="invalid-feedback">
-                            {% for error in form.password2.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <button type="submit" class="btn btn-register">
-                    <i class="bi bi-check-circle-fill"></i> Create Account
-                </button>
-            </form>
-            
-            <div class="login-link">
-                <p class="mb-0">Already have an account? <a href="{% url 'login' %}">Sign in here</a></p>
             </div>
+            
+            <div class="mb-3">
+                <label for="{{ form.password1.id_for_label }}" class="form-label fw-bold text-secondary">
+                    <i class="bi bi-lock-fill me-1"></i> Password
+                </label>
+                <input type="password" 
+                       class="form-control form-control-lg rounded-3 border-2 {% if form.password1.errors %}is-invalid{% endif %}" 
+                       id="{{ form.password1.id_for_label }}" 
+                       name="{{ form.password1.name }}" 
+                       placeholder="Create a strong password"
+                       required>
+                {% if form.password1.help_text %}
+                    <div class="form-text text-muted small">{{ form.password1.help_text|safe }}</div>
+                {% endif %}
+                {% if form.password1.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.password1.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="mb-3">
+                <label for="{{ form.password2.id_for_label }}" class="form-label fw-bold text-secondary">
+                    <i class="bi bi-lock-fill me-1"></i> Confirm Password
+                </label>
+                <input type="password" 
+                       class="form-control form-control-lg rounded-3 border-2 {% if form.password2.errors %}is-invalid{% endif %}" 
+                       id="{{ form.password2.id_for_label }}" 
+                       name="{{ form.password2.name }}" 
+                       placeholder="Re-enter your password"
+                       required>
+                {% if form.password2.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.password2.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 btn-lg rounded-3 fw-bold mt-2 border-0 bg-gradient-primary-custom hover-lift">
+                <i class="bi bi-check-circle-fill me-2"></i> Create Account
+            </button>
+        </form>
+        
+        <div class="text-center mt-4 pt-4 border-top">
+            <p class="mb-0 text-muted">Already have an account? <a href="{% url 'login' %}" class="text-decoration-none fw-bold text-primary">Sign in here</a></p>
         </div>
     </div>
-
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+</div>
+{% endblock %}

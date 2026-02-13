@@ -1,689 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Room: {{ room_name }}</title>
-    
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    
-    <style>
-        body { 
-            background: #1a1a1a; 
-            color: white; 
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
-        .main-container { 
-            height: 100vh; 
-            display: flex;
-        }
-        #video-section { 
-            flex: 1; 
-            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-        .video-header {
-            background: rgba(31, 31, 31, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid #3a3a3a;
-            padding: 12px 20px;
-        }
-        #video-streams { 
-            flex: 1;
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
-            gap: 20px; 
-            padding: 24px;
-            overflow-y: auto;
-            align-content: start;
-        }
-        #video-streams::-webkit-scrollbar {
-            width: 8px;
-        }
-        #video-streams::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-        #video-streams::-webkit-scrollbar-thumb {
-            background: #444;
-            border-radius: 4px;
-        }
-        #video-streams::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        .video-container { 
-            position: relative;
-            background: linear-gradient(135deg, #2d2d2d 0%, #1f1f1f 100%);
-            border-radius: 16px; 
-            overflow: hidden;
-            aspect-ratio: 16/9;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-        }
-        .video-container.video-off {
-            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-            border-color: rgba(220, 53, 69, 0.3);
-        }
-        .video-container.video-off::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, rgba(220, 53, 69, 0.1) 0%, transparent 70%);
-            z-index: 1;
-        }
-        .video-container:hover {
-            border-color: #0b93f6;
-            box-shadow: 0 12px 32px rgba(11, 147, 246, 0.3), 0 4px 12px rgba(0,0,0,0.4);
-            transform: translateY(-2px);
-        }
-        .video-muted-icon {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
-            background: rgba(220, 53, 69, 0.2);
-            border: 3px solid #dc3545;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2;
-            animation: pulseIcon 2s infinite;
-        }
-        .video-container.video-off .video-muted-icon {
-            display: flex;
-        }
-        .video-muted-icon i {
-            font-size: 36px;
-            color: #dc3545;
-        }
-        @keyframes pulseIcon {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
-        }
-        .video-player { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover;
-            background: #000;
-            transition: opacity 0.3s;
-        }
-        .video-container.video-off .video-player {
-            opacity: 0;
-        }
-        .video-label { 
-            position: absolute; 
-            bottom: 16px; 
-            left: 16px; 
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(8px);
-            padding: 8px 16px; 
-            border-radius: 20px; 
-            font-size: 14px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .video-label i {
-            font-size: 12px;
-            color: #0b93f6;
-        }
-        .video-status {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            display: flex;
-            gap: 8px;
-        }
-        .status-indicator {
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(8px);
-            padding: 6px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .status-indicator.audio-on {
-            color: #4ade80;
-        }
-        .status-indicator.audio-off {
-            color: #f87171;
-        }
-        .participant-count {
-            font-size: 14px;
-            font-weight: 500;
-            color: #b0b0b0;
-        }
-        .participant-count i {
-            color: #0b93f6;
-            margin-right: 6px;
-        }
-        #chat-sidebar { 
-            width: 350px; 
-            background: #262626; 
-            border-left: 1px solid #3a3a3a;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-header {
-            padding: 16px;
-            border-bottom: 1px solid #3a3a3a;
-            background: #1f1f1f;
-        }
-        #chat-logs { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 16px;
-            background: #262626;
-        }
-        .message-wrapper { 
-            margin-bottom: 16px; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .message-wrapper.own { 
-            align-items: flex-end; 
-        }
-        .message-wrapper.other { 
-            align-items: flex-start; 
-        }
-        .message-bubble { 
-            max-width: 75%; 
-            padding: 10px 14px; 
-            border-radius: 18px; 
-            word-wrap: break-word;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-        .message-wrapper.own .message-bubble { 
-            background: #0b93f6; 
-            color: white; 
-            border-bottom-right-radius: 4px; 
-        }
-        .message-wrapper.other .message-bubble { 
-            background: #3a3a3a; 
-            color: white; 
-            border-bottom-left-radius: 4px; 
-        }
-        .message-username { 
-            font-size: 12px; 
-            font-weight: 600; 
-            margin-bottom: 4px; 
-            color: #b0b0b0; 
-            padding: 0 4px;
-        }
-        .message-timestamp { 
-            font-size: 10px; 
-            color: #707070; 
-            margin-top: 4px; 
-            padding: 0 4px;
-        }
-        .chat-input-area {
-            padding: 16px;
-            border-top: 1px solid #3a3a3a;
-            background: #1f1f1f;
-        }
-        .control-bar {
-            background: #1f1f1f;
-            border-top: 1px solid #3a3a3a;
-            padding: 16px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .control-group {
-            display: flex;
-            gap: 10px;
-        }
-        .control-btn {
-            min-width: 48px;
-            height: 48px;
-            padding: 0 12px;
-            border-radius: 8px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            font-size: 18px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-        .control-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-        .control-btn.ripple::before {
-            width: 300px;
-            height: 300px;
-        }
-        .control-btn:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-        }
-        .control-btn:active {
-            transform: translateY(0) scale(0.95);
-        }
-        .control-btn.active {
-            background: #6c757d !important;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-        }
-        .control-btn.muted {
-            background: #dc3545 !important;
-            animation: pulseRed 2s infinite;
-        }
-        @keyframes pulseRed {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-            50% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-        }
-        .control-btn.active-sharing {
-            background: #28a745 !important;
-            animation: pulseGreen 2s infinite;
-        }
-        @keyframes pulseGreen {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
-            50% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
-        }
-        .control-btn .btn-label {
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .btn-end-call {
-            background: #dc3545;
-            border-radius: 24px;
-        }
-        .btn-end-call:hover {
-            background: #c82333;
-        }
-        .dropdown-toggle::after {
-            margin-left: 4px;
-        }
-        .participants-panel {
-            width: 300px;
-            background: #262626;
-            border-left: 1px solid #3a3a3a;
-            display: none;
-            flex-direction: column;
-            position: absolute;
-            right: 350px;
-            top: 0;
-            bottom: 0;
-            z-index: 10;
-        }
-        .participants-panel.show {
-            display: flex;
-        }
-        .panel-header {
-            padding: 16px;
-            border-bottom: 1px solid #3a3a3a;
-            background: #1f1f1f;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .panel-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-        .participant-item {
-            padding: 12px;
-            margin-bottom: 8px;
-            background: #2d2d2d;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .participant-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: #0b93f6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-        .participant-info {
-            flex: 1;
-        }
-        .participant-name {
-            font-weight: 500;
-            font-size: 14px;
-        }
-        .participant-status {
-            font-size: 11px;
-            color: #888;
-        }
-        .reactions-popup {
-            position: fixed;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(31, 31, 31, 0.98);
-            backdrop-filter: blur(10px);
-            border-radius: 30px;
-            padding: 12px 20px;
-            display: none;
-            gap: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            border: 1px solid #3a3a3a;
-            z-index: 1000;
-        }
-        .reactions-popup.show {
-            display: flex;
-        }
-        .reaction-btn {
-            font-size: 28px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 12px;
-            transition: all 0.2s;
-        }
-        .reaction-btn:hover {
-            background: rgba(255,255,255,0.1);
-            transform: scale(1.2);
-        }
-        .floating-reaction {
-            position: fixed;
-            font-size: 36px;
-            animation: floatUp 3s ease-out forwards;
-            pointer-events: none;
-            z-index: 9999;
-        }
-        @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-200px); }
-        }
-        .settings-modal .modal-content {
-            background: #2d2d2d;
-            color: white;
-            border: 1px solid #3a3a3a;
-        }
-        .settings-modal .modal-header {
-            border-bottom: 1px solid #3a3a3a;
-        }
-        .settings-modal .form-label {
-            color: #b0b0b0;
-        }
-        .settings-modal .form-select,
-        .settings-modal .form-control {
-            background: #1f1f1f;
-            color: white;
-            border: 1px solid #3a3a3a;
-        }
-        #chat-sidebar.hidden {
-            display: none;
-        }
-        .toast-notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(31, 31, 31, 0.95);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            opacity: 0;
-            animation: slideDown 0.3s forwards, slideUp 0.3s 2.7s forwards;
-            pointer-events: none;
-        }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        @keyframes slideUp {
-            from { opacity: 1; transform: translateX(-50%) translateY(0); }
-            to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-        }
-        .toast-notification i {
-            font-size: 20px;
-        }
-        .toast-notification.success { border-left: 4px solid #28a745; }
-        .toast-notification.error { border-left: 4px solid #dc3545; }
-        .toast-notification.info { border-left: 4px solid #0b93f6; }
-        .status-badge {
-            position: fixed;
-            bottom: 90px;
-            left: 20px;
-            background: rgba(31, 31, 31, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 8px 16px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 1000;
-        }
-        .status-badge i {
-            font-size: 16px;
-        }
-        .status-badge.mic-off {
-            color: #dc3545;
-            border: 1px solid #dc3545;
-        }
-        .status-badge.video-off {
-            color: #ffc107;
-            border: 1px solid #ffc107;
-        }
-        .status-badge.sharing {
-            color: #28a745;
-            border: 1px solid #28a745;
-        }
-        .share-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-        }
-        .share-modal.show {
-            display: flex;
-        }
-        .share-modal-content {
-            background: #2d2d2d;
-            border-radius: 16px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-        .share-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .share-modal-header h3 {
-            margin: 0;
-            color: white;
-            font-size: 20px;
-        }
-        .share-close-btn {
-            background: none;
-            border: none;
-            color: #999;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.3s;
-        }
-        .share-close-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        .share-link-box {
-            background: #1a1a1a;
-            border: 2px solid #0b93f6;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-        .share-link-label {
-            color: #999;
-            font-size: 13px;
-            margin-bottom: 8px;
-        }
-        .share-link-display {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .share-link-display input {
-            flex: 1;
-            background: #2d2d2d;
-            border: 1px solid #444;
-            color: white;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .share-copy-btn {
-            background: #0b93f6;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .share-copy-btn:hover {
-            background: #0575e6;
-            transform: translateY(-2px);
-        }
-        .share-copy-btn.copied {
-            background: #28a745;
-        }
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Room: {{ room_name }}{% endblock %}
 
-    <div class="main-container">
+    {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/room.css' %}">
+{% endblock %}
+</head>
+
+<body class="{% block body_class %}bg-black text-white overflow-hidden{% endblock %}">
+{% block content %}
+    <div class="d-flex vh-100">
         <!-- Video Section -->
-        <div id="video-section">
-            <div class="video-header d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-0 text-white"><i class="bi bi-camera-video me-2"></i>{{ room_name }}</h5>
-                </div>
-                <div class="participant-count">
-                    <i class="bi bi-people-fill"></i>
-                    <span id="participant-count">0</span> Participants
+        <div id="video-section" class="flex-fill d-flex flex-column position-relative bg-dark bg-gradient">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom border-secondary border-opacity-25 bg-dark bg-opacity-75 glass-overlay">
+                <h5 class="mb-0 text-white"><i class="bi bi-camera-video me-2"></i>{{ room_name }}</h5>
+                <div class="text-secondary small fw-bold">
+                    <i class="bi bi-people-fill text-primary me-1"></i>
+                    <span id="participant-count" class="text-white">0</span> Participants
                 </div>
             </div>
-            <div id="video-streams">
-                <!-- Video containers will be injected here by JS -->
+
+            <!-- Video Grid -->
+            <div id="video-streams" class="flex-fill p-4 gap-3 overflow-auto">
+                <!-- JS will inject video containers here -->
             </div>
-            
+
             <!-- Control Bar -->
-            <div class="control-bar">
+            <div class="p-3 d-flex justify-content-between align-items-center bg-dark border-top border-secondary border-opacity-25">
                 <!-- Left controls -->
-                <div class="control-group">
-                    <button class="control-btn btn-secondary" id="mic-btn" title="Mute/Unmute">
-                        <i class="bi bi-mic-fill"></i>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="mic-btn" title="Mute/Unmute">
+                        <i class="bi bi-mic-fill fs-5"></i>
                     </button>
-                    <button class="control-btn btn-secondary" id="video-btn" title="Start/Stop Video">
-                        <i class="bi bi-camera-video-fill"></i>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="video-btn" title="Start/Stop Video">
+                        <i class="bi bi-camera-video-fill fs-5"></i>
                     </button>
                 </div>
-                
+
                 <!-- Center controls -->
-                <div class="control-group">
-                    <button class="control-btn btn-secondary" id="participants-btn" title="Participants">
-                        <i class="bi bi-people-fill"></i>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="participants-btn" title="Participants">
+                        <i class="bi bi-people-fill fs-5"></i>
                     </button>
-                    <button class="control-btn btn-secondary" id="chat-btn" title="Chat">
-                        <i class="bi bi-chat-dots-fill"></i>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="chat-btn" title="Chat">
+                        <i class="bi bi-chat-dots-fill fs-5"></i>
                     </button>
-                    <button class="control-btn btn-secondary" id="share-btn" title="Share Screen">
-                        <i class="bi bi-display"></i>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="share-btn" title="Share Screen">
+                        <i class="bi bi-display fs-5"></i>
                     </button>
-                    <button class="control-btn btn-secondary" id="reactions-btn" title="Reactions">
-                        <i class="bi bi-emoji-smile-fill"></i>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="reactions-btn" title="Reactions">
+                        <i class="bi bi-emoji-smile-fill fs-5"></i>
                     </button>
-                    <button class="control-btn btn-secondary" id="settings-btn" title="Settings" data-bs-toggle="modal" data-bs-target="#settingsModal">
-                        <i class="bi bi-gear-fill"></i>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="settings-btn" title="Settings" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                        <i class="bi bi-gear-fill fs-5"></i>
                     </button>
-                    <button class="control-btn btn-secondary" id="share-link-btn" title="Share Meeting Link">
-                        <i class="bi bi-share-fill"></i>
+                    <button class="btn btn-secondary border-0 control-btn rounded-3 d-flex align-items-center justify-content-center" id="share-link-btn" title="Share Meeting Link">
+                        <i class="bi bi-share-fill fs-5"></i>
                     </button>
                 </div>
-                
+
                 <!-- Right control -->
-                <div class="control-group">
-                    <button class="control-btn btn-end-call" id="end-call-btn" title="Leave Meeting">
-                        <i class="bi bi-telephone-fill"></i> Leave
+                <div>
+                    <button class="btn btn-danger control-btn rounded-pill px-4 w-auto fw-bold d-flex align-items-center gap-2" id="end-call-btn" title="Leave Meeting">
+                        <i class="bi bi-telephone-fill"></i> <span class="d-none d-md-inline">Leave</span>
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Participants Panel -->
-        <aside class="participants-panel" id="participants-panel">
-            <div class="panel-header">
+        <aside class="d-none flex-column border-start border-secondary border-opacity-25 bg-dark position-absolute end-0 top-0 bottom-0 z-2 w-300px h-100 shadow-lg" id="participants-panel">
+            <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center bg-black bg-opacity-25">
                 <h6 class="mb-0"><i class="bi bi-people-fill me-2"></i>Participants (<span id="panel-participant-count">0</span>)</h6>
-                <button class="btn btn-sm btn-close btn-close-white" id="close-participants"></button>
+                <button class="btn-close btn-close-white small" id="close-participants"></button>
             </div>
-            <div class="panel-content" id="participants-list">
+            <div class="flex-fill overflow-auto p-2 custom-scroll" id="participants-list">
                 <!-- Participants will be listed here -->
             </div>
         </aside>
 
         <!-- Chat Sidebar -->
-        <aside id="chat-sidebar">
-            <div class="chat-header">
+        <aside id="chat-sidebar" class="d-flex flex-column border-start border-secondary border-opacity-25 bg-body-tertiary w-350px">
+            <div class="p-3 border-bottom border-secondary border-opacity-25 bg-dark bg-opacity-50">
                 <h6 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Chat</h6>
             </div>
-            <div id="chat-logs"></div>
-            <div class="chat-input-area">
+            <div id="chat-logs" class="flex-fill overflow-auto p-3 custom-scroll d-flex flex-column gap-3 bg-dark">
+                <!-- Chat messages -->
+            </div>
+            <div class="p-3 border-top border-secondary border-opacity-25 bg-dark bg-opacity-50">
                 <div class="input-group">
-                    <input type="text" class="form-control" id="chat-message-input" 
-                           placeholder="Type a message..." 
-                           aria-label="Chat message">
+                    <input type="text" class="form-control bg-dark text-white border-secondary" id="chat-message-input"
+                           placeholder="Type a message..." aria-label="Chat message">
                     <button class="btn btn-primary" type="button" id="chat-message-submit">
                         <i class="bi bi-send-fill"></i>
                     </button>
@@ -693,44 +102,44 @@
     </div>
 
     <!-- Reactions Popup -->
-    <div class="reactions-popup" id="reactions-popup">
-        <button class="reaction-btn" onclick="sendReaction('👍')">👍</button>
-        <button class="reaction-btn" onclick="sendReaction('👏')">👏</button>
-        <button class="reaction-btn" onclick="sendReaction('❤️')">❤️</button>
-        <button class="reaction-btn" onclick="sendReaction('😂')">😂</button>
-        <button class="reaction-btn" onclick="sendReaction('😮')">😮</button>
-        <button class="reaction-btn" onclick="sendReaction('🎉')">🎉</button>
+    <div class="position-fixed start-50 translate-middle-x d-none gap-2 p-2 rounded-4 glass-overlay border border-secondary shadow-lg z-3" style="bottom: 90px;" id="reactions-popup">
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('👍')">👍</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('👏')">👏</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('❤️')">❤️</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('😂')">😂</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('😮')">😮</button>
+        <button class="btn btn-link text-decoration-none fs-2 p-1" onclick="sendReaction('🎉')">🎉</button>
     </div>
 
     <!-- Settings Modal -->
-    <div class="modal fade settings-modal" id="settingsModal" tabindex="-1">
+    <div class="modal fade" id="settingsModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
+            <div class="modal-content bg-dark border-secondary">
+                <div class="modal-header border-secondary">
                     <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Settings</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Microphone</label>
-                        <select class="form-select" id="mic-select">
+                        <label class="form-label text-secondary small">Microphone</label>
+                        <select class="form-select bg-black text-white border-secondary" id="mic-select">
                             <option>Default Microphone</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Camera</label>
-                        <select class="form-select" id="camera-select">
+                        <label class="form-label text-secondary small">Camera</label>
+                        <select class="form-select bg-black text-white border-secondary" id="camera-select">
                             <option>Default Camera</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Speaker</label>
-                        <select class="form-select" id="speaker-select">
+                        <label class="form-label text-secondary small">Speaker</label>
+                        <select class="form-select bg-black text-white border-secondary" id="speaker-select">
                             <option>Default Speaker</option>
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save Changes</button>
                 </div>
@@ -739,876 +148,55 @@
     </div>
 
     <!-- Share Link Modal -->
-    <div class="share-modal" id="shareLinkModal">
-        <div class="share-modal-content">
-            <div class="share-modal-header">
-                <h3><i class="bi bi-share-fill"></i> Share Meeting Link</h3>
-                <button class="share-close-btn" onclick="closeShareModal()">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-            <div class="share-link-box">
-                <div class="share-link-label">
-                    <i class="bi bi-link-45deg"></i> Meeting Link
+    <div class="modal fade" id="shareLinkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title"><i class="bi bi-share-fill me-2"></i>Share Meeting Link</h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="closeShareModal()" aria-label="Close"></button>
                 </div>
-                <div class="share-link-display">
-                    <input type="text" id="meetingShareLink" readonly onclick="this.select()">
-                    <button class="share-copy-btn" onclick="copyMeetingLink()">
-                        <i class="bi bi-clipboard"></i> Copy
-                    </button>
+                <div class="modal-body pt-4">
+                    <div class="p-3 rounded-3 border border-primary bg-black bg-opacity-50 mb-3">
+                        <label class="form-label text-secondary small mb-1"><i class="bi bi-link-45deg"></i> Meeting Link</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control bg-dark text-white border-secondary" id="meetingShareLink" readonly onclick="this.select()">
+                            <button class="btn btn-primary share-copy-btn fw-bold" onclick="copyMeetingLink()">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-secondary small mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Share this link with others to invite them to the meeting
+                    </p>
                 </div>
             </div>
-            <p style="color: #999; font-size: 13px; margin: 0;">
-                <i class="bi bi-info-circle"></i> Share this link with others to invite them to the meeting
-            </p>
         </div>
     </div>
 
-    <!-- Share Link Modal -->
-    <div class="share-modal" id="shareLinkModal">
-        <div class="share-modal-content">
-            <div class="share-modal-header">
-                <h3><i class="bi bi-share-fill"></i> Share Meeting Link</h3>
-                <button class="share-close-btn" onclick="closeShareModal()">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-            <div class="share-link-box">
-                <div class="share-link-label">
-                    <i class="bi bi-link-45deg"></i> Meeting Link
-                </div>
-                <div class="share-link-display">
-                    <input type="text" id="meetingShareLink" readonly onclick="this.select()">
-                    <button class="share-copy-btn" onclick="copyMeetingLink()">
-                        <i class="bi bi-clipboard"></i> Copy
-                    </button>
-                </div>
-            </div>
-            <p style="color: #999; font-size: 13px; margin: 0;">
-                <i class="bi bi-info-circle"></i> Share this link with others to invite them to the meeting
-            </p>
-        </div>
-    </div>
+<!-- 1. Embed data in a hidden div -->
+<div id="room-config"
+     data-app-id="{{ app_id }}"
+     data-channel="{{ room_name }}"
+     data-username="{{ username }}"
+     data-display-name="{{ display_name }}"
+     style="display:none;">
+</div>
 
-    <!-- Share Link Modal -->
-    <div class="share-modal" id="shareLinkModal">
-        <div class="share-modal-content">
-            <div class="share-modal-header">
-                <h3><i class="bi bi-share-fill"></i> Share Meeting Link</h3>
-                <button class="share-close-btn" onclick="closeShareModal()">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-            <div class="share-link-box">
-                <div class="share-link-label">
-                    <i class="bi bi-link-45deg"></i> Meeting Link
-                </div>
-                <div class="share-link-display">
-                    <input type="text" id="meetingShareLink" readonly onclick="this.select()">
-                    <button class="share-copy-btn" onclick="copyMeetingLink()">
-                        <i class="bi bi-clipboard"></i> Copy
-                    </button>
-                </div>
-            </div>
-            <p style="color: #999; font-size: 13px; margin: 0;">
-                <i class="bi bi-info-circle"></i> Share this link with others to invite them to the meeting
-            </p>
-        </div>
-    </div>
-
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
+    {% block extra_js %}
 
     <!-- Agora SDK -->
-<!--    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.11.0.js"></script>-->
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.1.js"></script>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.2.js"></script>
 
-    <script>
-        const APP_ID = "{{ app_id }}";
-        const TOKEN = null; // For testing, set Agora to "App ID only" mode in their dashboard
-        // const TOKEN = '007eJxTYLj7fFq/NUum56zVlyetPdfWc+pJQfS92P6GjvMaTXkGV78rMKQlJZsYGhikmiSnWpoYGiZbmpmapyWZGqeamRlbGFsYLvRJyWwIZGTgmXaSgREKwXwGl8TMnMrgksS8lNICBgYAMW0kkQ=='; // For testing, set Agora to "App ID only" mode in their dashboard
-        const CHANNEL = "{{ room_name }}";
-        const UID = Math.floor(Math.random() * 10000);
-        const USERNAME = "{{ username }}";
-        const DISPLAY_NAME = "{{ display_name }}";
-        let currentDisplayName = DISPLAY_NAME;
+<!--    <script>-->
+<!--    const APP_ID = "{{ app_id }}";-->
+<!--    const TOKEN = null;-->
+<!--    const CHANNEL = "{{ room_name }}";-->
+<!--    const UID = Math.floor(Math.random() * 10000);-->
+<!--    const USERNAME = "{{ username }}";-->
+<!--    const DISPLAY_NAME = "{{ display_name }}";-->
+<!--    let currentDisplayName = DISPLAY_NAME;-->
+<!--    </script>-->
+    <script src="{% static 'js/room.js' %}" defer></script>
 
-        // Browser detection
-        const isEdge = /Edg/.test(navigator.userAgent);
-        const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
-        
-        // Edge-compatible codec configuration
-        const codecPreference = isEdge ? 'h264' : 'vp8';
-        const client = AgoraRTC.createClient({
-            mode: 'rtc', 
-            codec: codecPreference
-        });
-        
-        console.log(`Browser: ${isEdge ? 'Edge' : isChrome ? 'Chrome' : 'Other'}, Using codec: ${codecPreference}`);
-        
-        let localTracks = [];
-        let remoteUsers = {};
-        let participantNames = {}; // Map UID to display name
-        let participantUsernames = {}; // Map UID to username
-        let isMicMuted = false;
-        let isVideoOff = false;
-        let isScreenSharing = false;
-        let screenTrack = null;
-
-        // Haptic feedback and visual effects
-        function addRippleEffect(element) {
-            element.classList.add('ripple');
-            setTimeout(() => element.classList.remove('ripple'), 600);
-            
-            // Vibrate if supported
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-        }
-
-        // Check permissions before starting
-        async function checkMediaPermissions() {
-            try {
-                // Try to get permission status
-                const permissionStatus = await navigator.permissions.query({ name: 'camera' });
-                const micPermissionStatus = await navigator.permissions.query({ name: 'microphone' });
-                
-                console.log('Camera permission:', permissionStatus.state);
-                console.log('Microphone permission:', micPermissionStatus.state);
-                
-                if (permissionStatus.state === 'denied' || micPermissionStatus.state === 'denied') {
-                    showPermissionGuide();
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                console.log('Permission API not supported, will try direct access');
-                return true;
-            }
-        }
-
-        function showPermissionGuide() {
-            const guide = isEdge ? `
-                <div style="background: rgba(220, 53, 69, 0.1); border: 2px solid #dc3545; border-radius: 12px; padding: 20px; margin: 20px; color: white;">
-                    <h5><i class="bi bi-exclamation-triangle-fill" style="color: #dc3545;"></i> Camera/Microphone Permission Needed</h5>
-                    <p><strong>For Microsoft Edge:</strong></p>
-                    <ol style="text-align: left; margin-left: 20px;">
-                        <li>Click the lock icon (🔒) or camera icon in the address bar</li>
-                        <li>Set Camera and Microphone to "Allow"</li>
-                        <li>Click "Refresh" or press F5 to reload the page</li>
-                    </ol>
-                    <p style="margin-top: 15px;"><strong>Alternative:</strong></p>
-                    <ol style="text-align: left; margin-left: 20px;">
-                        <li>Go to Edge Settings (three dots → Settings)</li>
-                        <li>Click "Cookies and site permissions"</li>
-                        <li>Click "Camera" and "Microphone"</li>
-                        <li>Make sure this site is in the "Allow" list</li>
-                    </ol>
-                    <button onclick="location.reload()" class="btn btn-primary mt-3">Reload Page</button>
-                </div>
-            ` : `
-                <div style="background: rgba(220, 53, 69, 0.1); border: 2px solid #dc3545; border-radius: 12px; padding: 20px; margin: 20px; color: white;">
-                    <h5><i class="bi bi-exclamation-triangle-fill" style="color: #dc3545;"></i> Camera/Microphone Permission Needed</h5>
-                    <p>Click the camera icon in the address bar and allow access, then reload the page.</p>
-                    <button onclick="location.reload()" class="btn btn-primary mt-3">Reload Page</button>
-                </div>
-            `;
-            
-            document.getElementById('video-streams').innerHTML = guide;
-        }
-
-        function showToast(message, type = 'info', icon = 'bi-info-circle-fill') {
-            const toast = document.createElement('div');
-            toast.className = `toast-notification ${type}`;
-            toast.innerHTML = `<i class="bi ${icon}"></i><span>${message}</span>`;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        function updateStatusBadges() {
-            // Remove existing badges
-            document.querySelectorAll('.status-badge').forEach(b => b.remove());
-            
-            const badges = [];
-            if (isMicMuted) {
-                badges.push('<div class="status-badge mic-off"><i class="bi bi-mic-mute-fill"></i>Muted</div>');
-            }
-            if (isVideoOff) {
-                badges.push('<div class="status-badge video-off"><i class="bi bi-camera-video-off-fill"></i>Video Off</div>');
-            }
-            if (isScreenSharing) {
-                badges.push('<div class="status-badge sharing"><i class="bi bi-display"></i>Sharing Screen</div>');
-            }
-            
-            badges.forEach((badge, index) => {
-                const div = document.createElement('div');
-                div.innerHTML = badge;
-                div.firstChild.style.bottom = `${90 + (index * 50)}px`;
-                document.body.appendChild(div.firstChild);
-            });
-        }
-
-        // --- 1. VIDEO LOGIC ---
-        let joinAndDisplayLocalStream = async () => {
-            try {
-                // Check permissions first (especially for Edge)
-                const hasPermission = await checkMediaPermissions();
-                if (!hasPermission && isEdge) {
-                    console.log('Permissions denied, showing guide');
-                    return;
-                }
-
-                client.on('user-published', handleUserJoined);
-                client.on('user-unpublished', handleUserUnpublished);
-                client.on('user-left', handleUserLeft);
-
-                await client.join(APP_ID, CHANNEL, TOKEN, UID);
-
-                // Try to create tracks with error handling
-                // Edge-specific track creation with constraints
-                if (isEdge) {
-                    let audioTrack = null;
-                    let videoTrack = null;
-                    
-                    // Create audio track
-                    try {
-                        audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-                            encoderConfig: "music_standard"
-                        });
-                    } catch (audioError) {
-                        console.error('Failed to create audio track:', audioError);
-                        if (audioError.name === 'NotAllowedError' || audioError.message.includes('permission')) {
-                            showToast('Microphone permission denied. Click the lock icon in the address bar.', 'error', 'bi-mic-mute-fill');
-                        } else {
-                            showToast('Microphone unavailable. Check if another app is using it.', 'error', 'bi-mic-mute-fill');
-                        }
-                        isMicMuted = true;
-                    }
-                    
-                    // Create video track
-                    try {
-                        videoTrack = await AgoraRTC.createCameraVideoTrack({
-                            encoderConfig: "480p_1",
-                            optimizationMode: "detail"
-                        });
-                    } catch (videoError) {
-                        console.error('Failed to create video track:', videoError);
-                        if (videoError.name === 'NotAllowedError' || videoError.message.includes('permission')) {
-                            showToast('Camera permission denied. Click the lock icon in the address bar.', 'error', 'bi-camera-video-off-fill');
-                        } else if (videoError.code === 'NOT_READABLE') {
-                            showToast('Camera unavailable. Check if another app is using it or try restarting your browser.', 'error', 'bi-camera-video-off-fill');
-                        } else {
-                            showToast('Camera unavailable. Joining with audio only.', 'error', 'bi-camera-video-off-fill');
-                        }
-                        isVideoOff = true;
-                    }
-                    
-                    localTracks = [audioTrack, videoTrack];
-                } else {
-                    // Non-Edge browsers: create tracks together
-                    try {
-                        localTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
-                    } catch (error) {
-                        console.error('Failed to create tracks:', error);
-                        
-                        // Try audio only if video fails
-                        if (error.code === 'NOT_READABLE' || error.message.includes('video') || error.message.includes('Could not start')) {
-                            showToast('Camera unavailable. Joining with audio only.', 'error', 'bi-camera-video-off-fill');
-                            try {
-                                const audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-                                    encoderConfig: "high_quality"
-                                });
-                                localTracks = [audioTrack, null];
-                                isVideoOff = true;
-                            } catch (audioError) {
-                                console.error('Failed to create audio track:', audioError);
-                                showToast('Microphone unavailable. Check permissions.', 'error', 'bi-mic-mute-fill');
-                                localTracks = [null, null];
-                                isMicMuted = true;
-                            }
-                        } else if (error.name === 'NotAllowedError' || error.message.includes('permission')) {
-                            showToast('Permission denied. Click the lock icon in the address bar to allow access.', 'error', 'bi-exclamation-triangle-fill');
-                            localTracks = [null, null];
-                            isVideoOff = true;
-                            isMicMuted = true;
-                        } else {
-                            showToast('Failed to access media devices. Try refreshing the page.', 'error', 'bi-exclamation-triangle-fill');
-                            localTracks = [null, null];
-                        }
-                    }
-                }
-
-                let player = `<div class="video-container ${isVideoOff ? 'video-off' : ''}" id="user-container-${UID}">
-                                <div class="video-player" id="user-${UID}"></div>
-                                <div class="video-muted-icon">
-                                    <i class="bi bi-camera-video-off-fill"></i>
-                                </div>
-                                <div class="video-status">
-                                    <span class="status-indicator ${isMicMuted ? 'audio-off' : 'audio-on'}" id="audio-status-${UID}">
-                                        <i class="bi ${isMicMuted ? 'bi-mic-mute-fill' : 'bi-mic-fill'}"></i>
-                                    </span>
-                                </div>
-                                <div class="video-label">
-                                    <i class="bi bi-person-circle"></i>
-                                    <span id="display-name-${UID}">${currentDisplayName}</span> <span class="badge bg-primary ms-2" style="font-size: 10px;">You</span>
-                                </div>
-                              </div>`;
-                updateParticipantCount();
-                document.getElementById('video-streams').insertAdjacentHTML('beforeend', player);
-
-                // Only play video if track exists
-                if (localTracks[1]) {
-                    try {
-                        localTracks[1].play(`user-${UID}`);
-                    } catch (playError) {
-                        console.error('Failed to play video:', playError);
-                    }
-                }
-                
-                // Only publish available tracks
-                const tracksToPublish = localTracks.filter(track => track !== null);
-                if (tracksToPublish.length > 0) {
-                    await client.publish(tracksToPublish);
-                }
-                
-                // Update UI states
-                if (isVideoOff) {
-                    document.getElementById('video-btn').classList.add('muted');
-                    document.getElementById('video-btn').querySelector('i').className = 'bi bi-camera-video-off-fill';
-                }
-                if (isMicMuted) {
-                    document.getElementById('mic-btn').classList.add('muted');
-                    document.getElementById('mic-btn').querySelector('i').className = 'bi bi-mic-mute-fill';
-                }
-                
-                updateStatusBadges();
-                
-            } catch (error) {
-                console.error('Error joining channel:', error);
-                showToast('Failed to join meeting. Please try again.', 'error', 'bi-exclamation-triangle-fill');
-            }
-            
-            // Broadcast this user's video participation with username
-            chatSocket.send(JSON.stringify({
-                'type': 'video_joined',
-                'username': USERNAME,
-                'display_name': currentDisplayName,
-                'uid': UID
-            }));
-        };
-
-        let handleUserJoined = async (user, mediaType) => {
-            console.log(`User joined - UID: ${user.uid}, MediaType: ${mediaType}, Has video: ${!!user.videoTrack}, Has audio: ${!!user.audioTrack}`);
-            
-            // Don't handle our own user joined events
-            if (user.uid === UID) {
-                console.log('Ignoring own user-published event');
-                return;
-            }
-            
-            remoteUsers[user.uid] = user;
-            await client.subscribe(user, mediaType);
-
-            // Create container on first publish (either audio or video)
-            let playerElement = document.getElementById(`user-container-${user.uid}`);
-            if (!playerElement) {
-                console.log(`Creating container for UID: ${user.uid}`);
-                const displayName = participantNames[user.uid] || participantUsernames[user.uid] || 'Guest';
-                
-                const player = `<div class="video-container video-off" id="user-container-${user.uid}">
-                            <div class="video-player" id="user-${user.uid}"></div>
-                            <div class="video-muted-icon">
-                                <i class="bi bi-camera-video-off-fill"></i>
-                            </div>
-                            <div class="video-status">
-                                <span class="status-indicator audio-on" id="audio-status-${user.uid}">
-                                    <i class="bi bi-mic-fill"></i>
-                                </span>
-                            </div>
-                            <div class="video-label" id="label-${user.uid}">
-                                <i class="bi bi-person-circle"></i>
-                                <span id="display-name-${user.uid}">${displayName}</span>
-                            </div>
-                          </div>`;
-                document.getElementById('video-streams').insertAdjacentHTML('beforeend', player);
-                updateParticipantCount();
-            } else {
-                console.log(`Container already exists for UID: ${user.uid}`);
-            }
-            
-            // Handle video track
-            if (mediaType === 'video' && user.videoTrack) {
-                console.log(`Playing video for UID: ${user.uid}`);
-                try {
-                    user.videoTrack.play(`user-${user.uid}`);
-                    // Remove video-off class when video is playing
-                    const container = document.getElementById(`user-container-${user.uid}`);
-                    if (container) {
-                        container.classList.remove('video-off');
-                    }
-                } catch (error) {
-                    console.error('Failed to play remote video:', error);
-                }
-            }
-            
-            // Handle audio track
-            if (mediaType === 'audio' && user.audioTrack) {
-                user.audioTrack.play();
-            }
-        };
-
-        let handleUserUnpublished = (user, mediaType) => {
-            if (mediaType === 'video') {
-                const container = document.getElementById(`user-container-${user.uid}`);
-                if (container) {
-                    container.classList.add('video-off');
-                }
-            }
-        };
-
-        let handleUserLeft = async (user) => {
-            delete remoteUsers[user.uid];
-            document.getElementById(`user-container-${user.uid}`).remove();
-            updateParticipantCount();
-        };
-
-        function updateParticipantCount() {
-            const count = Object.keys(remoteUsers).length + 1; // +1 for local user
-            document.getElementById('participant-count').textContent = count;
-            document.getElementById('panel-participant-count').textContent = count;
-            updateParticipantsList();
-        }
-
-        function updateParticipantsList() {
-            const list = document.getElementById('participants-list');
-            list.innerHTML = '';
-            
-            // Add local user
-            list.innerHTML += `
-                <div class="participant-item">
-                    <div class="participant-avatar">${currentDisplayName.charAt(0).toUpperCase()}</div>
-                    <div class="participant-info">
-                        <div class="participant-name">
-                            <span id="my-display-name">${currentDisplayName}</span> (You)
-                            <i class="bi bi-pencil-square ms-2" style="cursor: pointer; font-size: 12px;" onclick="editDisplayName()" title="Edit display name"></i>
-                        </div>
-                        <div class="participant-status">${USERNAME} • Host</div>
-                    </div>
-                    <i class="bi ${isMicMuted ? 'bi-mic-mute-fill text-danger' : 'bi-mic-fill text-success'}"></i>
-                </div>
-            `;
-            
-            // Add remote users
-            Object.keys(remoteUsers).forEach(uid => {
-                const displayName = participantNames[uid] || participantUsernames[uid] || 'Guest';
-                const username = participantUsernames[uid] || 'Unknown';
-                list.innerHTML += `
-                    <div class="participant-item">
-                        <div class="participant-avatar">${displayName.charAt(0).toUpperCase()}</div>
-                        <div class="participant-info">
-                            <div class="participant-name">${displayName}</div>
-                            <div class="participant-status">${username}</div>
-                        </div>
-                        <i class="bi bi-mic-fill text-success"></i>
-                    </div>
-                `;
-            });
-        }
-
-        // Mic control
-        document.getElementById('mic-btn').onclick = async function() {
-            if (!localTracks[0]) {
-                showToast('Microphone not available', 'error', 'bi-mic-mute-fill');
-                return;
-            }
-            
-            addRippleEffect(this);
-            
-            isMicMuted = !isMicMuted;
-            await localTracks[0].setEnabled(!isMicMuted);
-            
-            const icon = this.querySelector('i');
-            const audioStatus = document.getElementById(`audio-status-${UID}`);
-            
-            if (isMicMuted) {
-                icon.className = 'bi bi-mic-mute-fill';
-                this.classList.add('muted');
-                audioStatus.classList.remove('audio-on');
-                audioStatus.classList.add('audio-off');
-                audioStatus.querySelector('i').className = 'bi bi-mic-mute-fill';
-                showToast('Microphone muted', 'error', 'bi-mic-mute-fill');
-            } else {
-                icon.className = 'bi bi-mic-fill';
-                this.classList.remove('muted');
-                audioStatus.classList.remove('audio-off');
-                audioStatus.classList.add('audio-on');
-                audioStatus.querySelector('i').className = 'bi bi-mic-fill';
-                showToast('Microphone unmuted', 'success', 'bi-mic-fill');
-            }
-            
-            updateParticipantsList();
-            updateStatusBadges();
-        };
-
-        // Video control
-        document.getElementById('video-btn').onclick = async function() {
-            if (!localTracks[1]) {
-                showToast('Camera not available', 'error', 'bi-camera-video-off-fill');
-                return;
-            }
-            
-            addRippleEffect(this);
-            
-            isVideoOff = !isVideoOff;
-            await localTracks[1].setEnabled(!isVideoOff);
-            
-            const icon = this.querySelector('i');
-            const videoContainer = document.getElementById(`user-container-${UID}`);
-            
-            if (isVideoOff) {
-                icon.className = 'bi bi-camera-video-off-fill';
-                this.classList.add('muted');
-                videoContainer.classList.add('video-off');
-                showToast('Camera turned off', 'error', 'bi-camera-video-off-fill');
-            } else {
-                icon.className = 'bi bi-camera-video-fill';
-                this.classList.remove('muted');
-                videoContainer.classList.remove('video-off');
-                showToast('Camera turned on', 'success', 'bi-camera-video-fill');
-            }
-            
-            updateStatusBadges();
-        };
-
-        // Screen share control
-        document.getElementById('share-btn').onclick = async function() {
-            addRippleEffect(this);
-            
-            if (!isScreenSharing) {
-                try {
-                    // Edge-specific screen share configuration
-                    const screenConfig = isEdge ? {
-                        encoderConfig: "1080p_1",
-                        optimizationMode: "detail"
-                    } : {};
-                    
-                    screenTrack = await AgoraRTC.createScreenVideoTrack(screenConfig, "auto");
-                    await client.unpublish([localTracks[1]]);
-                    await client.publish([screenTrack]);
-                    
-                    const screenPlayer = document.getElementById(`user-${UID}`);
-                    screenTrack.play(screenPlayer);
-                    
-                    isScreenSharing = true;
-                    this.classList.add('active-sharing');
-                    this.querySelector('i').className = 'bi bi-stop-circle-fill';
-                    showToast('Screen sharing started', 'success', 'bi-display');
-                } catch (error) {
-                    console.error('Screen share failed:', error);
-                    if (error.code === 'PERMISSION_DENIED' || error.name === 'NotAllowedError') {
-                        showToast('Screen sharing permission denied', 'error', 'bi-x-circle-fill');
-                    } else {
-                        showToast('Screen sharing failed. Try again.', 'error', 'bi-x-circle-fill');
-                    }
-                }
-            } else {
-                await client.unpublish([screenTrack]);
-                screenTrack.close();
-                await client.publish([localTracks[1]]);
-                localTracks[1].play(`user-${UID}`);
-                
-                isScreenSharing = false;
-                this.classList.remove('active-sharing');
-                this.querySelector('i').className = 'bi bi-display';
-                showToast('Screen sharing stopped', 'info', 'bi-display');
-            }
-            
-            updateStatusBadges();
-        };
-
-        // Participants panel toggle
-        document.getElementById('participants-btn').onclick = function() {
-            addRippleEffect(this);
-            const panel = document.getElementById('participants-panel');
-            panel.classList.toggle('show');
-            this.classList.toggle('active');
-            
-            if (panel.classList.contains('show')) {
-                showToast('Participants panel opened', 'info', 'bi-people-fill');
-            }
-        };
-
-        document.getElementById('close-participants').onclick = function() {
-            document.getElementById('participants-panel').classList.remove('show');
-            document.getElementById('participants-btn').classList.remove('active');
-        };
-
-        // Chat toggle
-        document.getElementById('chat-btn').onclick = function() {
-            addRippleEffect(this);
-            const chat = document.getElementById('chat-sidebar');
-            chat.classList.toggle('hidden');
-            this.classList.toggle('active');
-            
-            if (chat.classList.contains('hidden')) {
-                showToast('Chat hidden', 'info', 'bi-chat-dots-fill');
-            } else {
-                showToast('Chat opened', 'info', 'bi-chat-dots-fill');
-            }
-        };
-
-        // Reactions
-        document.getElementById('reactions-btn').onclick = function() {
-            addRippleEffect(this);
-            const popup = document.getElementById('reactions-popup');
-            popup.classList.toggle('show');
-        };
-
-        function sendReaction(emoji) {
-            // Vibrate
-            if (navigator.vibrate) {
-                navigator.vibrate(100);
-            }
-            
-            // Hide popup
-            document.getElementById('reactions-popup').classList.remove('show');
-            
-            // Create floating reaction
-            const reaction = document.createElement('div');
-            reaction.className = 'floating-reaction';
-            reaction.textContent = emoji;
-            reaction.style.left = Math.random() * window.innerWidth + 'px';
-            reaction.style.bottom = '100px';
-            document.body.appendChild(reaction);
-            
-            setTimeout(() => reaction.remove(), 3000);
-        }
-
-        // End call with confirmation
-        document.getElementById('end-call-btn').onclick = function() {
-            if (confirm('Are you sure you want to leave the meeting?')) {
-                leaveAndRemoveLocalStream();
-            }
-        };
-
-        // Edit display name function
-        function editDisplayName() {
-            const newName = prompt('Enter your display name:', currentDisplayName);
-            if (newName && newName.trim()) {
-                currentDisplayName = newName.trim();
-                
-                // Update local display
-                document.getElementById('my-display-name').textContent = currentDisplayName;
-                document.querySelector(`#display-name-${UID}`).textContent = currentDisplayName;
-                
-                // Save to server (you can add API endpoint for this)
-                fetch('/api/update-display-name/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ display_name: currentDisplayName })
-                }).catch(err => console.error('Failed to save display name:', err));
-                
-                // Broadcast updated name to others
-                chatSocket.send(JSON.stringify({
-                    'type': 'video_joined',
-                    'username': USERNAME,
-                    'uid': UID
-                }));
-                
-                updateParticipantsList();
-            }
-        }
-
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
-        let leaveAndRemoveLocalStream = async () => {
-            // Safely stop and close tracks
-            for(let i=0; i < localTracks.length; i++){
-                if (localTracks[i]) {
-                    try {
-                        localTracks[i].stop();
-                        localTracks[i].close();
-                    } catch (error) {
-                        console.error('Error stopping track:', error);
-                    }
-                }
-            }
-            
-            // Close screen share track if exists
-            if (screenTrack) {
-                try {
-                    screenTrack.close();
-                } catch (error) {
-                    console.error('Error closing screen track:', error);
-                }
-            }
-            
-            // Leave channel
-            try {
-                await client.leave();
-            } catch (error) {
-                console.error('Error leaving channel:', error);
-            }
-            
-            // Redirect to home
-            window.location.href = '/';
-        };
-
-        joinAndDisplayLocalStream();
-
-        // Log browser info for debugging
-        console.log('Browser Info:', {
-            userAgent: navigator.userAgent,
-            isEdge: isEdge,
-            codec: codecPreference,
-            platform: navigator.platform
-        });
-
-        // --- 2. CHAT LOGIC (Django Channels) ---
-        const chatSocket = new WebSocket(
-            'wss://' + window.location.host + '/ws/chat/' + CHANNEL + '/'
-        );
-
-        function formatTimestamp(dateString) {
-            if (!dateString) {
-                const now = new Date();
-                return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            }
-            const date = new Date(dateString);
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        function createMessageBubble(username, message, timestamp, isOwn = false) {
-            const wrapperClass = isOwn ? 'own' : 'other';
-            return `
-                <div class="message-wrapper ${wrapperClass}">
-                    ${!isOwn ? `<div class="message-username">${username}</div>` : ''}
-                    <div class="message-bubble">${message}</div>
-                    <div class="message-timestamp">${formatTimestamp(timestamp)}</div>
-                </div>
-            `;
-        }
-
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            const chatLogs = document.querySelector('#chat-logs');
-            
-            if (data.type === 'history') {
-                // Render all past messages from the database
-                data.messages.forEach(msg => {
-                    const isOwn = msg.username === USERNAME;
-                    chatLogs.innerHTML += createMessageBubble(msg.username, msg.message, msg.created, isOwn);
-                });
-            } else if (data.type === 'chat') {
-                // Render a single new message
-                const isOwn = data.username === USERNAME;
-                chatLogs.innerHTML += createMessageBubble(data.username, data.message, null, isOwn);
-                chatLogs.scrollTop = chatLogs.scrollHeight;
-            } else if (data.type === 'video_participant') {
-                // Don't process our own video_joined broadcast
-                if (data.uid === UID) {
-                    return;
-                }
-                
-                // Store participant name mapping
-                participantNames[data.uid] = data.display_name || data.username;
-                participantUsernames[data.uid] = data.username;
-                // Update label if video already exists
-                const labelSpan = document.querySelector(`#display-name-${data.uid}`);
-                if (labelSpan) {
-                    labelSpan.textContent = data.display_name || data.username;
-                }
-                updateParticipantsList();
-            }
-        };
-
-        document.querySelector('#chat-message-submit').onclick = function(e) {
-            const messageInputDom = document.querySelector('#chat-message-input');
-            const message = messageInputDom.value.trim();
-            if (message) {
-                chatSocket.send(JSON.stringify({
-                    'type': 'chat',
-                    'message': message,
-                    'username': USERNAME
-                }));
-                messageInputDom.value = '';
-            }
-        };
-
-        // Send message on Enter key
-        document.querySelector('#chat-message-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.querySelector('#chat-message-submit').click();
-            }
-        });
-
-        // Share Link functionality
-        document.getElementById('share-link-btn').onclick = function() {
-            const modal = document.getElementById('shareLinkModal');
-            const input = document.getElementById('meetingShareLink');
-            
-            // Set the current meeting URL
-            input.value = window.location.href;
-            
-            // Show modal
-            modal.classList.add('show');
-            
-            // Select the link
-            setTimeout(() => input.select(), 100);
-        };
-
-        function closeShareModal() {
-            document.getElementById('shareLinkModal').classList.remove('show');
-        }
-
-        function copyMeetingLink() {
-            const input = document.getElementById('meetingShareLink');
-            const button = event.target.closest('.share-copy-btn');
-            
-            // Select and copy
-            input.select();
-            input.setSelectionRange(0, 99999);
-            
-            navigator.clipboard.writeText(input.value).then(() => {
-                const originalHTML = button.innerHTML;
-                button.innerHTML = '<i class="bi bi-check-circle-fill"></i> Copied!';
-                button.classList.add('copied');
-                
-                setTimeout(() => {
-                    button.innerHTML = originalHTML;
-                    button.classList.remove('copied');
-                }, 2000);
-                
-                showToast('Meeting link copied to clipboard!', 'success', 'bi-check-circle-fill');
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                showToast('Failed to copy link. Please copy manually.', 'error', 'bi-exclamation-triangle-fill');
-            });
-        }
-
-        // Close modal when clicking outside
-        document.getElementById('shareLinkModal').onclick = function(e) {
-            if (e.target === this) {
-                closeShareModal();
-            }
-        };
-    </script>
-</body>
-</html>
+{% endblock %}
