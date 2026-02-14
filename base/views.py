@@ -93,3 +93,6 @@ def update_display_name(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+def test(request):
+    return render(request, 'base/test.html')

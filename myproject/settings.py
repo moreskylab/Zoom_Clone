@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
 from pathlib import Path
+
+#from django.conf.global_settings import STATICFILES_DIRS
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -164,5 +166,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    # Add other static file directories here if needed
+]
+
+STATIC_ROOT = BASE_DIR / 'collected_static'
 
 YOUR_AGORA_APP_ID_HERE = os.getenv("YOUR_AGORA_APP_ID_HERE")
